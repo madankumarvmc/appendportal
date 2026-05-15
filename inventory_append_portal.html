@@ -195,14 +195,14 @@ body {
   font-size: 12px; font-weight: 700; color: var(--gray-900);
   background: var(--gray-100); padding: 3px 7px; border-radius: 4px;
   display: inline-block;
-  white-space: nowrap;   /* FIX: prevent wrapping */
+  white-space: nowrap;
   word-break: keep-all;
 }
 .zone-tag {
   font-size: 11px; font-weight: 500; color: var(--gray-600);
   background: var(--gray-100); padding: 2px 7px; border-radius: 4px;
   display: inline-block;
-  white-space: nowrap;   /* FIX: prevent wrapping */
+  white-space: nowrap;
   word-break: keep-all;
 }
 
@@ -393,9 +393,9 @@ input[type=checkbox].row-cb { width: 15px; height: 15px; cursor: pointer; accent
 
   <div class="header">
     <div class="header-left">
-      <span class="header-logo"></span>
+      <span class="header-logo">📦</span>
       <div>
-        <div class="header-title">STACKBOX Bin-SKU Append Portal</div>
+        <div class="header-title">Bin-SKU Portal</div>
         <div class="header-sub" id="hdr-sub">—</div>
       </div>
     </div>
@@ -494,9 +494,9 @@ input[type=checkbox].row-cb { width: 15px; height: 15px; cursor: pointer; accent
 // STATE
 // ════════════════════════════════════════════════════════════
 const S = {
-  bins:    {},   // binCode → { binCode, zone, area, skus:[…] }
-  allSkus: [],   // [{code, name}] sorted
-  changes: {},   // binCode → { removed:[…], added:[…] }
+  bins:    {},
+  allSkus: [],
+  changes: {},
   defBatch: 'BATCH12',
   defMfg:   null,
   defExp:   null,
@@ -661,8 +661,6 @@ function filtered() {
   }).sort((a, b) => a.localeCompare(b));
 }
 
-// Produces the HTML string for one table row.
-// Uses data-* attributes instead of inline onclick — all handled by event delegation below.
 function renderRow(bin) {
   const b   = S.bins[bin];
   const c   = S.changes[bin] || { removed: [], added: [] };
@@ -678,12 +676,10 @@ function renderRow(bin) {
   </tr>`;
 }
 
-// Generates the chip HTML for one bin. data-* attrs only — no inline onclick.
 function chipsHtml(bin, c) {
   if (!c) c = S.changes[bin] || { removed: [], added: [] };
   const b = S.bins[bin];
   let out = '';
-
   for (const s of b.skus) {
     const title = s.skuName ? `${s.skuCode} — ${s.skuName}` : s.skuCode;
     if (c.removed.includes(s.skuCode)) {
@@ -699,7 +695,6 @@ function chipsHtml(bin, c) {
   return out;
 }
 
-// Refreshes a single row in-place without re-rendering the whole table.
 function refreshRow(bin) {
   const row = document.querySelector(`tr[data-bin="${CSS.escape(bin)}"]`);
   if (!row) { render(); return; }
@@ -728,20 +723,14 @@ function updateStats() {
 }
 
 // ════════════════════════════════════════════════════════════
-// EVENT DELEGATION  ← the core fix for Add-SKU-after-remove
-//
-// A single listener on tbody handles ALL chip interactions.
-// Because the listener lives on the parent (tbody), it survives
-// any innerHTML replacement inside child rows.
-//
-// The "add-sku" action calls e.stopPropagation() so the
-// document-level close-dropdown handler never fires for that
-// click — the dropdown opens and stays open.
+// EVENT DELEGATION — all chip/button interactions in the table
+// The listener lives on tbody so it survives innerHTML replacements.
+// add-sku calls stopPropagation so the document close-handler
+// never fires for that click.
 // ════════════════════════════════════════════════════════════
 document.getElementById('tbody').addEventListener('click', e => {
-  const el  = e.target.closest('[data-action]');
+  const el = e.target.closest('[data-action]');
   if (!el) return;
-
   const action = el.dataset.action;
   const row    = el.closest('tr[data-bin]');
   if (!row) return;
@@ -753,13 +742,12 @@ document.getElementById('tbody').addEventListener('click', e => {
     case 'undo':    undoRemove(bin, sku); break;
     case 'unadd':   unadd(bin, sku);      break;
     case 'add-sku':
-      e.stopPropagation(); // prevent document handler from closing the dropdown
+      e.stopPropagation();
       openDd(bin, el);
       break;
   }
 });
 
-// Checkbox change (separate from click delegation)
 document.getElementById('tbody').addEventListener('change', e => {
   if (e.target.classList.contains('row-cb')) {
     const bin = e.target.closest('tr[data-bin]').dataset.bin;
@@ -799,9 +787,7 @@ function undoRemove(bin, sku) {
 function doAdd(bin, sku) {
   ensure(bin);
   const c = S.changes[bin];
-  // Re-adding a removed SKU → just undo the removal
   if (c.removed.includes(sku)) { undoRemove(bin, sku); return; }
-  // Already present and active
   if (S.bins[bin].skus.some(s => s.skuCode === sku)) { showToast(`${sku} is already in this bin`); return; }
   if (!c.added.includes(sku)) c.added.push(sku);
   cleanup(bin); refreshRow(bin);
@@ -874,19 +860,15 @@ function bulkRemove() {
 // ════════════════════════════════════════════════════════════
 function openDd(bin, anchor) {
   S.ddBin = bin; S.ddQuery = ''; S.ddFocus = -1;
-
   const dd   = document.getElementById('sku-dropdown');
   const inp  = document.getElementById('dd-input');
   const rect = anchor.getBoundingClientRect();
-
   let top  = rect.bottom + window.scrollY + 4;
   let left = rect.left   + window.scrollX;
   if (left + 300 > window.innerWidth - 10) left = window.innerWidth - 310 + window.scrollX;
-
   dd.style.top  = top  + 'px';
   dd.style.left = left + 'px';
   dd.classList.add('visible');
-
   inp.value = '';
   ddFilter('');
   setTimeout(() => inp.focus(), 30);
@@ -901,7 +883,6 @@ function ddFilter(q) {
   if (!S.ddBin) return;
   const b  = S.bins[S.ddBin];
   const c  = S.changes[S.ddBin] || { removed: [], added: [] };
-  // Active = original skus not removed + already added
   const active = new Set([
     ...b.skus.filter(s => !c.removed.includes(s.skuCode)).map(s => s.skuCode),
     ...c.added
@@ -915,7 +896,6 @@ function ddFilter(q) {
   renderDdList();
 }
 
-// Dropdown list uses data-sku-pick attributes — clicked via delegation below.
 function renderDdList() {
   const list  = document.getElementById('dd-list');
   const q     = S.ddQuery.trim();
@@ -943,7 +923,6 @@ function renderDdList() {
 
 function pickDd(sku) { if (S.ddBin && sku) { doAdd(S.ddBin, sku); closeDd(); } }
 
-// Delegation on dropdown list — also stops propagation so document handler won't close it mid-click.
 document.getElementById('dd-list').addEventListener('click', e => {
   e.stopPropagation();
   const el = e.target.closest('[data-sku-pick]');
@@ -962,8 +941,6 @@ function ddKey(e) {
   }
 }
 
-// Close dropdown when clicking anywhere outside it.
-// Because the add-sku handler calls stopPropagation, this never fires for those clicks.
 document.addEventListener('click', e => {
   const dd = document.getElementById('sku-dropdown');
   if (dd.classList.contains('visible') && !dd.contains(e.target)) closeDd();
@@ -1044,7 +1021,7 @@ function generateFile() {
 }
 
 // ════════════════════════════════════════════════════════════
-// DATE CONVERSION  (any format → DD/MM/YYYY string)
+// DATE CONVERSION
 // ════════════════════════════════════════════════════════════
 function fmtDate(v) {
   if (!v) return '';
