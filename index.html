@@ -983,7 +983,7 @@ function generateFile() {
       rows.push({
         'Bin Code': bin, 'HU Code': null, 'HU Kind Code': null,
         'Sku Code': skuCode,
-        'Quantity': -(sku.freeQty - sku.lockedQty),
+        'Quantity': -(sku.freeQty),
         'UOM (L0/L2/L3)': sku.uom || 'L0',
         'Bucket (Good/Damaged)': sku.bucket || 'Good',
         'Inclusion Status (PRE-GRN/INCLUDED/POST-GIN)': sku.inclStatus || 'INCLUDED',
